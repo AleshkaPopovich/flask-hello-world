@@ -1,0 +1,262 @@
+# app.py
+
+from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+import matplotlib.pyplot as plt
+import io
+import base64
+import requests
+
+app = Flask(__name__)
+
+# Configure the SQLite database
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///grades.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize the database
+db = SQLAlchemy(app)
+
+# Models
+class Class(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+    subject = db.Column(db.String(100))
+    students = db.relationship('Student', backref='class_', lazy=True, cascade="all, delete-orphan")
+
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+    class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
+    grades = db.relationship('Grade', backref='student', lazy=True, cascade="all, delete-orphan")
+
+class Grade(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    assessment_name = db.Column(db.String(100))
+    score = db.Column(db.Float)
+    date = db.Column(db.Date)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+
+class GradeBoundary(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    subject = db.Column(db.String(100))
+    grade = db.Column(db.Integer)
+    lower_bound = db.Column(db.Float)
+    upper_bound = db.Column(db.Float)   
+
+# Function to determine IB grade based on boundaries
+def get_ib_grade(subject, score):
+    grade_boundaries = GradeBoundary.query.filter_by(subject=subject).order_by(GradeBoundary.lower_bound).all()
+    for boundary in grade_boundaries:
+        if boundary.lower_bound <= score <= boundary.upper_bound:
+            return boundary.grade
+    return None
+
+# Routes
+@app.route('/')
+def index():
+    classes = Class.query.all()
+    return render_template('index.html', classes=classes)
+
+@app.route('/add_class', methods=['GET', 'POST'])
+def add_class():
+    if request.method == 'POST':
+        class_name = request.form['name']
+        subject = request.form['subject']
+        new_class = Class(name=class_name, subject=subject)
+        db.session.add(new_class)
+        db.session.commit()
+        return redirect(url_for('index'))
+    return render_template('add_class.html')
+
+@app.route('/edit_class/<int:class_id>', methods=['GET', 'POST'])
+def edit_class(class_id):
+    class_ = Class.query.get_or_404(class_id)
+    if request.method == 'POST':
+        class_.name = request.form['name']
+        class_.subject = request.form['subject']
+        db.session.commit()
+        return redirect(url_for('view_class', class_id=class_id))
+    return render_template('edit_class.html', class_=class_)
+
+@app.route('/delete_class/<int:class_id>', methods=['POST'])
+def delete_class(class_id):
+    class_ = Class.query.get_or_404(class_id)
+    db.session.delete(class_)
+    db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/class/<int:class_id>')
+def view_class(class_id):
+    class_ = Class.query.get_or_404(class_id)
+    students = class_.students
+
+    # Calculate class average
+    total_scores = 0
+    total_grades = 0
+    for student in students:
+        for grade in student.grades:
+            total_scores += grade.score
+            total_grades += 1
+    class_average = total_scores / total_grades if total_grades > 0 else None
+
+    # Calculate IB grade
+    subject = class_.subject
+    class_ib_grade = get_ib_grade(subject, class_average) if class_average is not None else None
+
+    # Generate class progress plot
+    dates_scores = {}
+    for student in students:
+        for grade in student.grades:
+            date = grade.date
+            if date in dates_scores:
+                dates_scores[date].append(grade.score)
+            else:
+                dates_scores[date] = [grade.score]
+
+    sorted_dates = sorted(dates_scores.keys())
+    average_scores = []
+    for date in sorted_dates:
+        average_scores.append(sum(dates_scores[date]) / len(dates_scores[date]))
+
+    if sorted_dates:
+        plt.figure()
+        plt.plot(sorted_dates, average_scores, marker='o')
+        plt.title(f"Class Progress of {class_.name}")
+        plt.xlabel('Date')
+        plt.ylabel('Average Score')
+        plt.tight_layout()
+
+        # Save plot to a string in base64 format
+        img = io.BytesIO()
+        plt.savefig(img, format='png')
+        img.seek(0)
+        class_plot_url = base64.b64encode(img.getvalue()).decode()
+        plt.close()
+    else:
+        class_plot_url = None
+
+    return render_template('view_class.html', class_=class_, class_average=class_average,
+                           class_ib_grade=class_ib_grade, class_plot_url=class_plot_url)
+
+@app.route('/class/<int:class_id>/add_student', methods=['GET', 'POST'])
+def add_student(class_id):
+    class_ = Class.query.get_or_404(class_id)
+    if request.method == 'POST':
+        student_name = request.form['name']
+        new_student = Student(name=student_name, class_id=class_id)
+        db.session.add(new_student)
+        db.session.commit()
+        return redirect(url_for('view_class', class_id=class_id))
+    return render_template('add_student.html', class_=class_)
+
+@app.route('/edit_student/<int:student_id>', methods=['GET', 'POST'])
+def edit_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    if request.method == 'POST':
+        student.name = request.form['name']
+        db.session.commit()
+        return redirect(url_for('view_student', student_id=student_id))
+    return render_template('edit_student.html', student=student)
+
+@app.route('/delete_student/<int:student_id>', methods=['POST'])
+def delete_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    class_id = student.class_id
+    db.session.delete(student)
+    db.session.commit()
+    return redirect(url_for('view_class', class_id=class_id))
+
+@app.route('/student/<int:student_id>/add_grade', methods=['GET', 'POST'])
+def add_grade(student_id):
+    student = Student.query.get_or_404(student_id)
+    if request.method == 'POST':
+        assessment_name = request.form['assessment_name']
+        score = float(request.form['score'])
+        date = datetime.strptime(request.form['date'], '%Y-%m-%d')
+        new_grade = Grade(assessment_name=assessment_name, score=score, date=date, student_id=student_id)
+        db.session.add(new_grade)
+        db.session.commit()
+        return redirect(url_for('view_student', student_id=student_id))
+    return render_template('add_grade.html', student=student)
+
+@app.route('/edit_grade/<int:grade_id>', methods=['GET', 'POST'])
+def edit_grade(grade_id):
+    grade = Grade.query.get_or_404(grade_id)
+    if request.method == 'POST':
+        grade.assessment_name = request.form['assessment_name']
+        grade.score = float(request.form['score'])
+        grade.date = datetime.strptime(request.form['date'], '%Y-%m-%d')
+        db.session.commit()
+        return redirect(url_for('view_student', student_id=grade.student_id))
+    return render_template('edit_grade.html', grade=grade)
+
+@app.route('/delete_grade/<int:grade_id>', methods=['POST'])
+def delete_grade(grade_id):
+    grade = Grade.query.get_or_404(grade_id)
+    student_id = grade.student_id
+    db.session.delete(grade)
+    db.session.commit()
+    return redirect(url_for('view_student', student_id=student_id))
+
+@app.route('/student/<int:student_id>')
+def view_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    grades = student.grades
+
+    # Calculate student average
+    total_scores = sum([grade.score for grade in grades])
+    total_grades = len(grades)
+    student_average = total_scores / total_grades if total_grades > 0 else None
+
+    # Calculate IB grade
+    subject = student.class_.subject
+    ib_grade = get_ib_grade(subject, student_average) if student_average is not None else None
+
+    # Generate progress plot
+    dates = [grade.date for grade in grades]
+    scores = [grade.score for grade in grades]
+    if dates:
+        plt.figure()
+        plt.plot(dates, scores, marker='o')
+        plt.title(f"Progress of {student.name}")
+        plt.xlabel('Date')
+        plt.ylabel('Score')
+        plt.tight_layout()
+
+        # Save plot to a string in base64 format
+        img = io.BytesIO()
+        plt.savefig(img, format='png')
+        img.seek(0)
+        plot_url = base64.b64encode(img.getvalue()).decode()
+        plt.close()
+    else:
+        plot_url = None
+
+    return render_template('view_student.html', student=student, student_average=student_average,
+                           ib_grade=ib_grade, plot_url=plot_url)
+
+@app.route('/upload_grade_boundaries', methods=['GET', 'POST'])
+def upload_grade_boundaries():
+    if request.method == 'POST':
+        file = request.files['file']
+        if file:
+            import csv
+            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+            csv_input = csv.reader(stream)
+            for row in csv_input:
+                subject, grade, lower_bound, upper_bound = row
+                grade_boundary = GradeBoundary(subject=subject, grade=int(grade),
+                                               lower_bound=float(lower_bound),
+                                               upper_bound=float(upper_bound))
+                db.session.add(grade_boundary)
+            db.session.commit()
+            return redirect(url_for('index'))
+    return render_template('upload_grade_boundaries.html')
+
+
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)

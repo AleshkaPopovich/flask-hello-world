@@ -1,0 +1,65 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login</title>
+  <!-- Include Bootstrap CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+</head>
+<body>
+  <div class="container my-5">
+    <h1 class="text-center mb-4">Login</h1>
+
+    <!-- Display an error alert if something went wrong -->
+    {% if error %}
+    <div class="alert alert-danger text-center" role="alert">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <form method="post">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username:</label>
+            <input
+              type="text"
+              class="form-control"
+              id="username"
+              name="username"
+              required
+            />
+          </div>
+
+          <div class="mb-3">
+            <label for="password" class="form-label">Password:</label>
+            <input
+              type="password"
+              class="form-control"
+              id="password"
+              name="password"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">
+            Login
+          </button>
+        </form>
+
+        <div class="text-center mt-3">
+          Don’t have an account?
+          <a href="{{ url_for('register') }}">Create one here.</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS (optional) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js">
+  </script>
+</body>
+</html>
