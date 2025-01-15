@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Year {{ group_.classLevel }} - {{ group_.courseSubject }}</title>
+    <link 
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" 
+      rel="stylesheet"
+    >
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container my-5">
+        <h1 class="text-center mb-4">
+          Year {{ group_.classLevel }} - {{ group_.courseSubject }}
+        </h1>
+        <h2>Group Average: {{ group_average }}</h2>
+        <h2>IB Grade: {{ group_ib_grade }}</h2>
+
+        <div class="mb-4">
+            <a 
+              href="{{ url_for('editGroup', group_id=group_.id) }}" 
+              class="btn btn-warning"
+            >
+              Edit Group
+            </a>
+            <form 
+              action="{{ url_for('deleteGroup', group_id=group_.id) }}" 
+              method="post" 
+              class="d-inline"
+            >
+                <button 
+                  type="submit" 
+                  class="btn btn-danger"
+                  onclick="return confirm('Are you sure you want to delete this group and all its learners and grades?');"
+                >
+                  Delete Group
+                </button>
+            </form>
+        </div>
+
+        <h2>Learners</h2>
+        <ul class="list-group">
+        {% for lrn in group_.learners %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <a 
+                  href="{{ url_for('viewLearner', learner_id=lrn.id) }}" 
+                  class="text-decoration-none"
+                >
+                    {{ lrn.firstName }} {{ lrn.lastName }}
+                </a>
+                <div>
+                    <a 
+                      href="{{ url_for('editLearner', learner_id=lrn.id) }}" 
+                      class="btn btn-sm btn-warning"
+                    >
+                      Edit
+                    </a>
+                    <form 
+                      action="{{ url_for('deleteLearner', learner_id=lrn.id) }}" 
+                      method="post" 
+                      style="display:inline;"
+                    >
+                        <button 
+                          type="submit" 
+                          class="btn btn-sm btn-danger"
+                          onclick="return confirm('Are you sure you want to delete this learner and all their grades?');"
+                        >
+                          Delete
+                        </button>
+                    </form>
+                </div>
+            </li>
+        {% endfor %}
+        </ul>
+
+        {% if plot_data and plot_layout %}
+        <div class="mt-5 text-center">
+            <h2 class="mb-4">Group Progress Over Time</h2>
+            <div id="progress-graph"></div>
+        </div>
+        <script>
+            var data = {{ plot_data|safe }};
+            var layout = {{ plot_layout|safe }};
+            Plotly.newPlot('progress-graph', data, layout);
+        </script>
+        {% endif %}
+
+        <div class="mt-4 text-center">
+            <a 
+              href="{{ url_for('addLearner', group_id=group_.id) }}" 
+              class="btn btn-primary"
+            >
+              Add Learner
+            </a>
+            <a 
+              href="{{ url_for('homePage') }}" 
+              class="btn btn-secondary"
+            >
+              Back to Groups
+            </a>
+        </div>
+    </div>
+    <script 
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js">
+    </script>
+</body>
+</html>

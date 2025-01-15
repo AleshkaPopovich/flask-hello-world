@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Grade</title>
+    <link 
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" 
+      rel="stylesheet"
+    >
+</head>
+<body>
+    <div class="container my-5">
+        <!-- 
+          'student' in old code => 'learner' in new code.
+          However, your code snippet references "student.name" => "learner.firstName"
+        -->
+        <h1 class="text-center mb-4">
+          Add Grade for {{ learner.firstName }} {{ learner.lastName }}
+        </h1>
+
+        {% if error %}
+        <div class="alert alert-danger text-center" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" class="p-4 border rounded shadow-sm bg-light">
+            <div class="mb-3">
+                <label for="assessmentName" class="form-label">Assessment Name</label>
+                <!-- Matches request.form['assessment_name'] in the route code -->
+                <select id="assessmentName" name="assessment_name" class="form-select" required>
+                    <option value="">Select Assessment</option>
+                    <option value="Paper 1">Paper 1</option>
+                    <option value="Paper 2">Paper 2</option>
+                    <option value="Paper 3">Paper 3</option>
+                    <option value="Cycle Test">Cycle Test</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="score" class="form-label">Score (0-100)</label>
+                <!-- your route expects request.form['score'] -->
+                <input 
+                  type="number" 
+                  id="score" 
+                  step="0.01" 
+                  name="score" 
+                  class="form-control" 
+                  min="0" 
+                  max="100" 
+                  required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="date" class="form-label">Date</label>
+                <input 
+                  type="date" 
+                  id="date" 
+                  name="date" 
+                  class="form-control" 
+                  max="{{ max_date }}" 
+                  required
+                >
+            </div>
+            <div class="text-center">
+                <!-- 
+                  In the old code, you had: url_for('view_student', ...)
+                  Now it's: url_for('viewLearner', learner_id=learner.id)
+                -->
+                <button type="submit" class="btn btn-primary">Add Grade</button>
+                <a href="{{ url_for('viewLearner', learner_id=learner.id) }}" class="btn btn-secondary">
+                  Back to Learner
+                </a>
+            </div>
+        </form>
+    </div>
+    <script 
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js">
+    </script>
+</body>
+</html>

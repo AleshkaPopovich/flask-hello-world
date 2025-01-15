@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Course Group</title>
+    <link 
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" 
+      rel="stylesheet"
+    >
+</head>
+<body>
+    <div class="container my-5">
+        <h1 class="text-center mb-4">Edit Course Group</h1>
+        {% if error %}
+        <div class="alert alert-danger text-center" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+        <!-- 
+          old code had class_=class_, with class_.year_group and class_.subject
+          new code: group_=groupObj, group_.classLevel, group_.courseSubject 
+        -->
+        <form method="post" class="p-4 border rounded shadow-sm bg-light">
+            <div class="mb-3">
+                <label for="yearGroup" class="form-label">Year Group (1-13)</label>
+                <input 
+                  type="number" 
+                  id="yearGroup" 
+                  name="year_group" 
+                  class="form-control" 
+                  value="{{ group_.classLevel }}" 
+                  min="1" 
+                  max="13" 
+                  required
+                >
+            </div>
+            <div class="mb-3">
+                <label for="subject" class="form-label">Subject</label>
+                <select id="subject" name="subject" class="form-select" required>
+                    <option value="">Select Subject</option>
+                    <option 
+                      value="Maths AA SL" 
+                      {% if group_.courseSubject == "Maths AA SL" %}selected{% endif %}
+                    >
+                      Maths AA SL
+                    </option>
+                    <option 
+                      value="Maths AA HL" 
+                      {% if group_.courseSubject == "Maths AA HL" %}selected{% endif %}
+                    >
+                      Maths AA HL
+                    </option>
+                </select>
+            </div>
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary">Update Group</button>
+                <a href="{{ url_for('viewGroup', group_id=group_.id) }}" class="btn btn-secondary">
+                  Back to Group
+                </a>
+            </div>
+        </form>
+    </div>
+    <script 
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js">
+    </script>
+</body>
+</html>

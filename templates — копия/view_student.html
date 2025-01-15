@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ learner.firstName }} {{ learner.lastName }}</title>
+    <link 
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" 
+      rel="stylesheet"
+    >
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container my-5">
+        <h1 class="text-center mb-4">
+          {{ learner.firstName }} {{ learner.lastName }}
+        </h1>
+        <h2>
+          Group: Year 
+          {{ learner.courseGroup.classLevel }} - {{ learner.courseGroup.courseSubject }}
+        </h2>
+        <h3>Average Score: {{ learner_average }}</h3>
+        <h3>IB Grade: {{ ib_grade }}</h3>
+
+        <div class="mb-4">
+            <a 
+              href="{{ url_for('editLearner', learner_id=learner.id) }}" 
+              class="btn btn-warning"
+            >
+              Edit Learner
+            </a>
+            <form 
+              action="{{ url_for('deleteLearner', learner_id=learner.id) }}" 
+              method="post" 
+              class="d-inline"
+            >
+                <button 
+                  type="submit" 
+                  class="btn btn-danger"
+                  onclick="return confirm('Are you sure you want to delete this learner and all their grades?');"
+                >
+                  Delete Learner
+                </button>
+            </form>
+        </div>
+
+        <h2>Grades</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Assessment</th>
+                    <th>Score</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for gr in learner.learnerGrades %}
+                <tr>
+                    <td>{{ gr.date }}</td>
+                    <td>{{ gr.examTitle }}</td>
+                    <td>{{ gr.numericGrade }}</td>
+                    <td>
+                        <a 
+                          href="{{ url_for('editLearnerGrade', grade_id=gr.id) }}" 
+                          class="btn btn-sm btn-warning"
+                        >
+                          Edit
+                        </a>
+                        <form 
+                          action="{{ url_for('deleteLearnerGrade', grade_id=gr.id) }}" 
+                          method="post" 
+                          style="display:inline;"
+                        >
+                            <button 
+                              type="submit" 
+                              class="btn btn-sm btn-danger"
+                              onclick="return confirm('Are you sure you want to delete this grade?');"
+                            >
+                              Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        {% if plot_data and plot_layout %}
+        <div class="mt-5 text-center">
+            <h2 class="mb-4">Progress Over Time</h2>
+            <div id="progress-graph"></div>
+        </div>
+        <script>
+            var data = {{ plot_data|safe }};
+            var layout = {{ plot_layout|safe }};
+            Plotly.newPlot('progress-graph', data, layout);
+        </script>
+        {% endif %}
+
+        <div class="mt-4 text-center">
+            <a 
+              href="{{ url_for('addLearnerGrade', learner_id=learner.id) }}" 
+              class="btn btn-primary"
+            >
+              Add Grade
+            </a>
+            <a 
+              href="{{ url_for('viewGroup', group_id=learner.group_id) }}" 
+              class="btn btn-secondary"
+            >
+              Back to Group
+            </a>
+        </div>
+    </div>
+    <script 
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js">
+    </script>
+</body>
+</html>
